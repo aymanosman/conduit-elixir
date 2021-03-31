@@ -1,0 +1,69 @@
+defmodule ConduitWeb.ConnCase do
+  @moduledoc """
+  This module defines the test case to be used by
+  tests that require setting up a connection.
+
+  Such tests rely on `Phoenix.ConnTest` and also
+  import other functionality to make it easier
+  to build common data structures and query the data layer.
+
+  Finally, if the test case interacts with the database,
+  we enable the SQL sandbox, so changes done to the database
+  are reverted at the end of every test. If you are using
+  PostgreSQL, you can even run database tests asynchronously
+  by setting `use ConduitWeb.ConnCase, async: true`, although
+  this option is not recommended for other databases.
+  """
+
+  use ExUnit.CaseTemplate
+
+  using do
+    quote do
+      # Import conveniences for testing with connections
+      import Plug.Conn
+      import Phoenix.ConnTest
+      import ConduitWeb.ConnCase
+
+      alias ConduitWeb.Router.Helpers, as: Routes
+
+      # The default endpoint for testing
+      @endpoint ConduitWeb.Endpoint
+    end
+  end
+
+  setup tags do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Conduit.Repo)
+
+    unless tags[:async] do
+      Ecto.Adapters.SQL.Sandbox.mode(Conduit.Repo, {:shared, self()})
+    end
+
+    {:ok, conn: Phoenix.ConnTest.build_conn()}
+  end
+
+  def user_fixture(attrs \\ %{}) do
+    username = attrs[:username] || "bob"
+
+    Conduit.Accounts.register_user(%{
+      username: username,
+      email: attrs[:email] || "#{username}@#{username}",
+      password: attrs[:password] || "#{username}_pass",
+      bio: attrs[:bio],
+      image: attrs[:image]
+    })
+  end
+
+  def article_fixture(token, attrs \\ %{}) do
+    title = attrs[:title] || "Some Thing"
+
+    Conduit.Content.create_article(
+      token,
+      %{
+        title: attrs[:title] || title,
+        description: attrs[:description] || title <> " description",
+        body: attrs[:body] || title <> " body",
+        tagList: attrs[:tagList]
+      }
+    )
+  end
+end
